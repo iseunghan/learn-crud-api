@@ -12,8 +12,14 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultMatcher;
 
+import javax.print.attribute.standard.Media;
+import java.util.ArrayList;
+
+import static org.assertj.core.internal.bytebuddy.matcher.ElementMatchers.is;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -29,6 +35,46 @@ class AccountControllerTest {
     @Autowired
     ObjectMapper objectMapper;
 
+    @Test
+    public void testGetMapping() throws Exception {
+
+        Account account = Account.builder()
+                .name("spring1")
+                .build();
+        Account account2 = Account.builder()
+                .name("spring2")
+                .build();
+        Account account3 = Account.builder()
+                .name("spring3")
+                .build();
+
+        mockMvc.perform(post("/accounts")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaTypes.HAL_JSON)
+                    .content(objectMapper.writeValueAsString(account)));
+        mockMvc.perform(post("/accounts")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaTypes.HAL_JSON)
+                .content(objectMapper.writeValueAsString(account2)));
+
+        mockMvc.perform(post("/accounts")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaTypes.HAL_JSON)
+                .content(objectMapper.writeValueAsString(account3)));
+
+        mockMvc.perform(get("/accounts")
+                        .accept(MediaTypes.HAL_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].idx").value(1))
+                .andExpect(jsonPath("$[0].name").value("spring1"))
+                .andExpect(jsonPath("$[1].idx").value(2))
+                .andExpect(jsonPath("$[1].name").value("spring2"))
+                .andExpect(jsonPath("$[2].idx").value(3))
+                .andExpect(jsonPath("$[2].name").value("spring3"))
+        ;
+
+
+    }
 
     @Test
     public void testPostMapping() throws Exception {

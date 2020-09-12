@@ -1,14 +1,14 @@
 package me.iseunghan.learncrud.Accounts;
 
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
+import java.util.List;
 
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 
@@ -18,10 +18,26 @@ public class AccountController {
 
     private final AccountService accountService;
 
-    public AccountController(AccountService accountService) {
+    private final AccountRepository accountRepository;
+
+
+    public AccountController(AccountService accountService, AccountRepository accountRepository) {
         this.accountService = accountService;
+        this.accountRepository = accountRepository;
     }
 
+
+//    @GetMapping
+//    public ResponseEntity getAccountList(Pageable pageable) {
+//        Page<Account> accountList = accountService.getAccountList(pageable);
+//        return ResponseEntity.ok(accountList);
+//    }
+
+    @GetMapping
+    public ResponseEntity getAccount() {
+        List<Account> accountList = accountRepository.findAll();
+        return ResponseEntity.ok(accountList);
+    }
 
     @PostMapping
     public ResponseEntity insertAccount(@RequestBody Account insertDto) {
