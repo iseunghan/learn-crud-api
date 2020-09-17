@@ -114,7 +114,53 @@ class AccountControllerTest {
 
     //============================ PUT ===============================
 
+    @Test
+    @Description("Put : 정상적으로 account 수정_200 응답 받기")
+    public void updateAccount200_OK() throws  Exception {
+        // Given
+        Account account = generatedAccount(100);
+        AccountDTO accountDTO = modelMapper.map(account, AccountDTO.class);
+        accountDTO.setName("update Name");
 
+        // When & Then
+        mockMvc.perform(put("/accounts/{id}", account.getIdx())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(accountDTO)))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("_links.self").exists())
+                .andExpect(jsonPath("name").value("update Name"));
+    }
+
+    @Test
+    @Description("Put : 존재하지 않는 account 수정_404_응답 받기")
+    public void updateAccount404_NotFound() throws  Exception {
+        // Given
+        Account account = generatedAccount(100);
+        AccountDTO accountDTO = modelMapper.map(account, AccountDTO.class);
+
+        // When & Then
+        mockMvc.perform(put("/accounts/11833")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(accountDTO)))
+                .andDo(print())
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @Description("Put : 비어있는 값으로 수정 할때_400 응답 받기")
+    public void updateAccount400_Empty() throws  Exception {
+        // Given
+        Account account = generatedAccount(100);
+        AccountDTO accountDTO = AccountDTO.builder().build();
+
+        // When & Then
+        mockMvc.perform(put("/accounts/{id}", account.getIdx())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(accountDTO)))
+                .andDo(print())
+                .andExpect(status().isBadRequest());
+    }
 
     //============================ DELETE ===============================
 
