@@ -1,26 +1,24 @@
 package me.iseunghan.learncrud.Accounts;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import org.junit.runner.RunWith;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.junit.runner.RunWith;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Description;
 import org.springframework.hateoas.MediaTypes;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.ResultMatcher;
 
-import javax.print.attribute.standard.Media;
-import java.util.ArrayList;
+import java.util.stream.IntStream;
 
-import static org.assertj.core.internal.bytebuddy.matcher.ElementMatchers.is;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -35,66 +33,109 @@ class AccountControllerTest {
     @Autowired
     ObjectMapper objectMapper;
 
+    @Autowired
+    AccountService accountService;
+
+    @Autowired
+    ModelMapper modelMapper;
+
+    //================= GET ===============================
+
     @Test
-    public void testGetMapping() throws Exception {
+    @Description("30개의 account를 페이지당 10개씩 1페이지를 조회하는 테스트")
+    public void queryAccounts() throws Exception {
+        // Given (0-30까지 저장)
+        IntStream.range(0, 30).forEach(e ->{
+            this.generatedAccount(e);
+        });
 
-        Account account = Account.builder()
-                .name("spring1")
-                .build();
-        Account account2 = Account.builder()
-                .name("spring2")
-                .build();
-        Account account3 = Account.builder()
-                .name("spring3")
-                .build();
-
-        mockMvc.perform(post("/accounts")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .accept(MediaTypes.HAL_JSON)
-                    .content(objectMapper.writeValueAsString(account)));
-        mockMvc.perform(post("/accounts")
-                .contentType(MediaType.APPLICATION_JSON)
-                .accept(MediaTypes.HAL_JSON)
-                .content(objectMapper.writeValueAsString(account2)));
-
-        mockMvc.perform(post("/accounts")
-                .contentType(MediaType.APPLICATION_JSON)
-                .accept(MediaTypes.HAL_JSON)
-                .content(objectMapper.writeValueAsString(account3)));
-
+        // When & Then
         mockMvc.perform(get("/accounts")
-                        .accept(MediaTypes.HAL_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].idx").value(1))
-                .andExpect(jsonPath("$[0].name").value("spring1"))
-                .andExpect(jsonPath("$[1].idx").value(2))
-                .andExpect(jsonPath("$[1].name").value("spring2"))
-                .andExpect(jsonPath("$[2].idx").value(3))
-                .andExpect(jsonPath("$[2].name").value("spring3"))
-        ;
-
-
-    }
-
-    @Test
-    public void testPostMapping() throws Exception {
-
-        Account account = Account.builder()
-                .name("spring")
-                .build();
-
-        mockMvc.perform(post("/accounts")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .accept(MediaTypes.HAL_JSON)
-                        .content(objectMapper.writeValueAsString(account)))
+                    .param("page", "1")
+                    .param("size", "10")
+                    .param("sort", "name,DESC"))
                 .andDo(print())
-                .andExpect(status().isCreated())
-                .andExpect(header().exists(HttpHeaders.LOCATION))
-                .andExpect(header().string(HttpHeaders.CONTENT_TYPE, MediaTypes.HAL_JSON_VALUE))
-                .andExpect(jsonPath("name").exists())
-                .andExpect(jsonPath("name").value("spring"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("_embedded.accountList[0]._links").exists())
+                .andExpect(jsonPath("_links.self").exists())
+                .andExpect(jsonPath("page.number").value(1))
+                .andExpect(jsonPath("page.size").value(10))
                 ;
     }
 
+    //============================ POST ===============================
 
+    @Test
+    @Description("POST : 이벤트를 성공적으로 저장201_응답 받기")
+    public void insertAccount201() throws Exception {
+        // Given
+        AccountDTO accountDTO = AccountDTO.builder()
+                .name("insertAccount")
+                .build();
+
+        // When & Then
+        this.mockMvc.perform(post("/accounts")
+                    .contentType(MediaType.APPLICATION_JSON_UTF8)
+                    .content(objectMapper.writeValueAsString(accountDTO)))
+                .andDo(print())
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("name").value("insertAccount"));
+    }
+
+    @Test
+    @Description("POST : 이미 존재하는 이벤트_중복일 경우400_BadRequest")
+    public void insertAccount400_Duplicate() throws Exception {
+        // Given
+        Account account = generatedAccount(100);
+        AccountDTO accountDTO = modelMapper.map(account, AccountDTO.class);
+
+        // When & Then
+        this.mockMvc.perform(post("/accounts")
+                    .contentType(MediaType.APPLICATION_JSON_UTF8)
+                    .content(objectMapper.writeValueAsString(accountDTO)))
+                .andDo(print())
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @Description("POST : 비어있는 값을 insert할때,400 응답 받기 ")
+    public void insertAccount400_Empty() throws Exception {
+        // Given
+        AccountDTO accountDTO = AccountDTO.builder().build();
+
+        // When & Then
+        this.mockMvc.perform(post("/accounts")
+                .contentType(MediaType.APPLICATION_JSON_UTF8)
+                .content(objectMapper.writeValueAsString(accountDTO)))
+                .andDo(print())
+                .andExpect(status().isBadRequest());
+    }
+
+
+    //============================ PUT ===============================
+
+
+
+    //============================ DELETE ===============================
+
+    @Test
+    @Description("Delete : 해당하는 id Account 삭제")
+    public void testDeleteMapping() throws Exception {
+        // Given
+        Account account = this.generatedAccount(1);
+
+        mockMvc.perform(delete("/accounts/1"))
+                .andDo(print())
+                .andExpect(header().doesNotExist(HttpHeaders.LOCATION))
+                .andExpect(status().isOk());
+    }
+
+
+    @Description("Account 만들어 주는 메소드")
+    public Account generatedAccount(Integer idx) {
+        Account account = Account.builder()
+                .name("account" + idx)
+                .build();
+        return this.accountService.join(account);
+    }
 }
