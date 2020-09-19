@@ -47,6 +47,21 @@ public class AccountController {
         return ResponseEntity.ok(entityModels);
     }
 
+    @GetMapping(value = "/{idx}")
+    public ResponseEntity getAccount(@PathVariable Integer idx) {
+        Optional<Account> optionalAccount = accountService.findById(idx);
+
+        // 존재하지 않는 Account -> NotFound
+        if (optionalAccount.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // 존재하는 Account일 경우
+        Account account = optionalAccount.get();
+        AccountResource accountResource = new AccountResource(account);
+        return ResponseEntity.ok(accountResource);
+    }
+
     @PostMapping
     public ResponseEntity insertAccount(@RequestBody @Valid AccountDTO accountDTO, Errors errors) {
         if (errors.hasErrors()) {
@@ -54,6 +69,10 @@ public class AccountController {
         }
 
         // TODO duplicateAccount -> ?
+        Account accountByName = this.accountService.findAccountByName(accountDTO.getName());
+        if (accountByName != null) {
+            return ResponseEntity.badRequest().build();
+        }
 
         Account mapAccount = modelMapper.map(accountDTO, Account.class);
         Account insertDTO = accountService.join(mapAccount);
@@ -86,6 +105,12 @@ public class AccountController {
     @DeleteMapping(value = "/{idx}")
     public ResponseEntity deleteAccount(@PathVariable Integer idx) {
         // TODO 1) 정상적으로 삭제, 2) 없는 값을 삭제 할 때
+        Optional<Account> optionalAccount = accountService.findById(idx);
+
+        if(optionalAccount.isEmpty()){
+            return ResponseEntity.notFound().build();
+        }
+        // account 가 존재할 경우.
         return ResponseEntity.ok().build();
     }
 }

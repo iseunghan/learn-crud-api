@@ -13,6 +13,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.stream.IntStream;
 
@@ -25,6 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @RunWith(SpringRunner.class)
 @SpringBootTest
 @AutoConfigureMockMvc
+@Transactional
 class AccountControllerTest {
 
     @Autowired
@@ -61,6 +63,31 @@ class AccountControllerTest {
                 .andExpect(jsonPath("page.number").value(1))
                 .andExpect(jsonPath("page.size").value(10))
                 ;
+    }
+
+    @Test
+    @Description("Get : findOne(id) 200 응답 받기")
+    public void queryOneAccount() throws Exception {
+        // Given
+        Account account = this.generatedAccount(100);
+
+        // When & Then
+        this.mockMvc.perform(get("/accounts/{id}", account.getIdx()))
+                    .andDo(print())
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("name").value("account100"))
+                    .andExpect(jsonPath("_links.self").exists());
+    }
+
+    @Test
+    @Description("Get : 존재하지 않는 account 조회_404 NotFound 응답 받기")
+    public void queryOneAccount404_NotFound() throws  Exception{
+        // Given
+
+        // When & Then
+        this.mockMvc.perform(get("/account/11888"))
+                        .andDo(print())
+                        .andExpect(status().isNotFound());
     }
 
     //============================ POST ===============================
@@ -165,20 +192,33 @@ class AccountControllerTest {
     //============================ DELETE ===============================
 
     @Test
-    @Description("Delete : 해당하는 id Account 삭제")
-    public void testDeleteMapping() throws Exception {
+    @Description("Delete : 해당하는 id Account 정상적으로 삭제_200 응답 받기")
+    public void testDeleteMapping200_OK() throws Exception {
         // Given
-        Account account = this.generatedAccount(1);
+        Account account = this.generatedAccount(100);
+        Account account1 = this.generatedAccount(200);
 
+
+        // When & Then
         mockMvc.perform(delete("/accounts/1"))
                 .andDo(print())
-                .andExpect(header().doesNotExist(HttpHeaders.LOCATION))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    @Description("Delete : 존재하지 않는 account 삭제404_NotFound 응답 받기")
+    public void testDeleteMapping404_NotFound() throws Exception {
+        // Given
+
+        // When & Then
+        this.mockMvc.perform(delete("/account/118332"))
+                    .andDo(print())
+                    .andExpect(status().isNotFound());
     }
 
 
     @Description("Account 만들어 주는 메소드")
-    public Account generatedAccount(Integer idx) {
+    private Account generatedAccount(Integer idx) {
         Account account = Account.builder()
                 .name("account" + idx)
                 .build();
