@@ -3,6 +3,8 @@ package me.iseunghan.learncrud.Accounts;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import me.iseunghan.learncrud.common.AccountResource;
+import me.iseunghan.learncrud.common.DuplicatedException;
+import me.iseunghan.learncrud.common.NotFoundException;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -68,11 +70,11 @@ public class AccountController {
             return ResponseEntity.badRequest().build();
         }
 
-        // TODO duplicateAccount -> ?
-        Account accountByName = this.accountService.findAccountByName(accountDTO.getName());
-        if (accountByName != null) {
-            return ResponseEntity.badRequest().build();
-        }
+        // TODO duplicateAccount -> exception이 터지는지 확인
+//        Account accountByName = this.accountService.findAccountByName(accountDTO.getName());
+//        if (accountByName != null) {
+//            return ResponseEntity.badRequest().build();
+//        }
 
         Account mapAccount = modelMapper.map(accountDTO, Account.class);
         Account insertDTO = accountService.join(mapAccount);
@@ -83,34 +85,36 @@ public class AccountController {
     }
 
     @PutMapping(value = "/{idx}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity updateAccount(@PathVariable Integer idx, @RequestBody @Valid AccountDTO accountDTO, Errors errors) {
+    public ResponseEntity updateAccount(@PathVariable Integer idx, @RequestBody Account account) {
         // TODO 1) 정상적으로 수정, 2) 없는 account를 수정 할 때, 3) 수정하려는 값이 비었을 때
-        if (errors.hasErrors()) {
-            return ResponseEntity.badRequest().build();
-        }
 
-        Optional<Account> optionalAccount = accountService.findById(idx);
-        if (optionalAccount.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
+        //TODO 비었을 경우 -> ExceptionHandler로 처리
+        Account updateAccount = accountService.updateAccount(idx, account);
 
-        Account oldAccount = optionalAccount.get();
-        modelMapper.map(accountDTO, oldAccount);
-        accountRepository.save(oldAccount);
-
-        AccountResource accountResource = new AccountResource(oldAccount);
+        AccountResource accountResource = new AccountResource(updateAccount);
         return ResponseEntity.ok(accountResource);
     }
 
     @DeleteMapping(value = "/{idx}")
     public ResponseEntity deleteAccount(@PathVariable Integer idx) {
         // TODO 1) 정상적으로 삭제, 2) 없는 값을 삭제 할 때
-        Optional<Account> optionalAccount = accountService.findById(idx);
+        accountService.deleteAccountbyId(idx);
 
-        if(optionalAccount.isEmpty()){
-            return ResponseEntity.notFound().build();
-        }
         // account 가 존재할 경우.
         return ResponseEntity.ok().build();
     }
+
+    /**
+     * @ExceptionHandler
+     */
+    @ExceptionHandler(value = NotFoundException.class)
+    public ResponseEntity NotFoundExcepResponseEntity(NotFoundException e) {
+        return ResponseEntity.badRequest().body(e.getInformation());
+    }
+
+    @ExceptionHandler(value = DuplicatedException.class)
+    public ResponseEntity DuplicationExcepResponseEntity(DuplicatedException e) {
+        return ResponseEntity.badRequest().body(e.getInformation());
+    }
+
 }

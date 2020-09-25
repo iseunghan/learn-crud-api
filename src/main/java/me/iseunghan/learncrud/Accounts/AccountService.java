@@ -1,5 +1,7 @@
 package me.iseunghan.learncrud.Accounts;
 
+import me.iseunghan.learncrud.common.DuplicatedException;
+import me.iseunghan.learncrud.common.NotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -39,7 +41,7 @@ public class AccountService {
     public Account updateAccount(Integer idx, Account newAccount) {
         Optional<Account> byId = accountRepository.findById(idx);
         if (byId.isEmpty()) {
-            throw new RuntimeException("error");
+            throw new NotFoundException("존재하지 않는 id입니다.");
         }
 
         Account account = byId.get();
@@ -55,7 +57,7 @@ public class AccountService {
     public void deleteAccountbyId(Integer idx) {
         Optional<Account> byId = accountRepository.findById(idx);
         if (byId.isEmpty()) {
-            throw new RuntimeException("error");
+            throw new NotFoundException("존재하지 않는 id입니다");
         }
         accountRepository.delete(byId.get());
     }
@@ -66,7 +68,8 @@ public class AccountService {
     private void validateDuplicateAccount(Account account) {
         accountRepository.findByName(account.getName())
                 .ifPresent(a -> {
-                    throw new IllegalStateException("이미 존재하는 회원입니다.");
+                    throw new DuplicatedException("이미 존재하는 회원입니다.");
                 });
     }
+
 }
